@@ -1,0 +1,58 @@
+syntax = "proto3";
+import "google/protobuf/any.proto";
+//初版protobuf设计，逐步替换安卓控制流中的Json
+package ucloud;
+
+//finger info
+message finger{
+	int32 fid = 1;
+	float x = 2;
+	float y = 3;
+}
+
+message resolution {
+	int32 r = 1;
+	int32 w = 2;
+	int32 h = 3;
+	int32 status = 4;
+}
+
+message version {
+	string value = 1;
+}
+
+message errmsg {
+	int32 error = 1;
+	string desc = 2;
+}
+
+message gamepad {
+	int32 buttons = 1;
+	sint32 lx = 2;
+	sint32 ly = 3;
+	sint32 rx = 4;
+	sint32 ry = 5;
+}
+
+message rtmp {
+	string uri = 1;
+}
+
+//Define mouse pointer msg
+message mouse{
+	float x = 1;
+	float y = 2;
+}
+
+//keyboard msg
+message kb {
+	uint32 v = 1;// key's value
+}
+
+message raw_msg {
+    int32 code = 1;
+	google.protobuf.Any msg = 2;//Other msg besides the motion fingers info and mouse
+	repeated finger motion_fs = 3;//Motion fingers msg.Defined here to save bytes
+	mouse mouse_ptr = 5;//mouse pointer msg.Defined here to save bytes
+	uint64 timestamp = 4;
+}

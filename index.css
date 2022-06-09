@@ -1,0 +1,63 @@
+* {
+  margin: 0;
+  padding: 0;
+}
+
+body,
+html {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+#videowrap {
+  width: 100%;
+  height: 100%;
+  background: #000;
+  text-align: center;
+  position: relative;
+}
+
+#videowrap #connect {
+  position: absolute;
+  top: 50px;
+  right: 0;
+  z-index: 2;
+}
+
+#videowrap #setbtn {
+  position: absolute;
+  top: 100px;
+  right: 0;
+  z-index: 2;
+}
+
+#videowrap #enter {
+  width: 120px;
+  height: 35px;
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  bottom: 0;
+  margin: auto;
+  z-index: 99999999;
+}
+
+#videowrap #setgroupbtn {
+  width: 100%;
+  background-color: #8080802b;
+  position: absolute;
+  top: 150px;
+  display: none;
+}
+
+#videowrap #setgroupbtn button {
+  margin-right: 20px;
+  margin-top: 20px;
+}
+
+#remote-video {
+  width: 100%;
+  height: 100%;
+}
