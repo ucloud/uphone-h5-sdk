@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="renderer" content="webkit" />
+    <!-- <script src="https://unpkg.com/vconsole@latest/dist/vconsole.min.js"></script> -->
+    <link rel="stylesheet" href="./index.css" />
+</head>
+
+<body>
+    <div ref="videowrap" id="videowrap">
+        <video ref="revideo" id="phone-video" autoplay="autoplay" playsinline webkit-playsinline></video>
+        <button id="setbtn">菜单</button>
+        <button id="enter">连接完成,点击进入</button>
+        <div id="setgroupbtn">
+            <button id="hpbtn">退出</button>
+            <button id="rsbtn">重新连接</button>
+            <button id="homebtn">桌面</button>
+            <button id="taskbtn">清理后台进程</button>
+            <button id="bqbtn">标清</button>
+            <button id="gqbtn">高清</button>
+            <button id="cqbtn">超清</button>
+            <button id="roundbtn">显示延迟</button>
+            <button id="stgamebtn">一键启动游戏</button>
+            <div id="ys" class="ys"></div>
+        </div>
+    </div>
+</body>
+
+<script src="./sdk/proto.js"></script>
+<script type="module">
+    import controller from "./sdk/controller.js"
+    var resolution = {
+        b: "",
+        g: "",
+        c: ""
+    }
+    var loadingParams = {
+        Id: "", // 请替换申请的云手机id(必填项)
+        mediaConstraints: {
+            audio: true,
+            video: true,
+        },
+        debug: false,
+        gamename: "", //游戏包名(可选项)
+        jobid: "", //唯一即可(可选项)
+        token: "" //请替换token值  如果调用api接口SetUPhoneToken进行了设置，此处为必填，否则为可选
+    }
+    var showbtn = false
+    var timer = null
+    var videowrap = document.querySelector("#videowrap")
+    var phonevideo = document.querySelector("#phone-video")
+    var setgroupbtn = document.querySelector("#setgroupbtn")
+    var enter = document.querySelector("#enter")
+    var setbtn = document.querySelector("#setbtn")
+    var hpbtn = document.querySelector("#hpbtn")
+    var rsbtn = document.querySelector("#rsbtn")
+    var homebtn = document.querySelector("#homebtn")
+    var taskbtn = document.querySelector("#taskbtn")
+    var bqbtn = document.querySelector("#bqbtn")
+    var gqbtn = document.querySelector("#gqbtn")
+    var cqbtn = document.querySelector("#cqbtn")
+    var roundbtn = document.querySelector("#roundbtn")
+    var stgamebtn = document.querySelector("#stgamebtn")
+    enter.addEventListener("click", enterplay)
+    setbtn.addEventListener("click", showbtngroup)
+    hpbtn.addEventListener("click", hangup)
+    rsbtn.addEventListener("click", reconnect)
+    homebtn.addEventListener("click", backhome)
+    taskbtn.addEventListener("click", cleanup)
+    bqbtn.addEventListener("click", () => {
+        changeresolution(resolution.b)
+    })
+    gqbtn.addEventListener("click", () => {
+        changeresolution(resolution.g)
+    })
+    cqbtn.addEventListener("click", () => {
+        changeresolution(resolution.c)
+    })
+    roundbtn.addEventListener("click", currentround)
+    stgamebtn.addEventListener("click", startgame)
+    //---------获取远程媒体流的三个步骤-------
+    //----第一步初始化SDK----
+    var Controller = new controller(loadingParams)
+    //----第二步开始连接----
+    Controller.startConnection()
+    //----第三步监听连接状态，获取媒体流----
+    Controller.onstatus("devicestatus", (states) => { //设备连接状态回调
+        if (states == 200) {
+            console.log("设备连接成功")
+        }
+        if (states == 1001) {
+            console.log("连接设备失败");
+        }
+        if (states == 1003) {
+            console.log("创建设备控制失败");
+        }
+        if (states == 1008) {
+            console.log("服务器应答失败");
+        }
+        if (states == 1026) {
+            console.log("设备已被占用");
+        }
+        if (states == 1038) {
+            console.log("后台资源还未释放")
+        }
+        if (states == 73002) {
+            console.log("设备不存在");
+        }
+    })
+    Controller.onstatus("networkstatus", (states) => { //网络连接状态回调
+        if (states == "connected") {
+            console.log("网络连接成功");
+            //网络连接正常时，才可获取远程媒体流
+            getRemoteStream()
+            //五分钟不操作将断开连接
+            //  closeTimer()
+        }
+        if (states == "disconnected") { }
+    })
+    Controller.onstatus("gamestatus", (states) => { //一键启动游戏状态回调
+        if (states == "success") {
+            console.log("游戏启动成功");
+        }
+        if (states == "fail") {
+            console.log("游戏启动失败");
+        }
+    })
+    Controller.onstatus("resolution", (states) => { //切换分辨率状态回调
+        if (states == "success") {
+            console.log("切换成功");
+        } else {
+            console.log("切换失败");
+        }
+    })
+
+    function getRemoteStream () {
+        phonevideo.srcObject = Controller.getRemoteStream()
+        phonevideo.addEventListener("canplay", function () {
+            phonevideo.play().then(res => {
+                console.log("开始播放")
+                enter.style.display = "none"
+            }).catch((res) => {
+                if (res.name == "NotAllowedError") {
+                    console.log("请点击进入按钮")
+                    console.log(res)
+                }
+            });
+        });
+        phonevideo.onloadedmetadata = function onloadedmetadata () {
+            var ratio = this.videoHeight / this.videoWidth
+            let clientHeight = window.innerHeight || document.documentElement.clientHeight || document.body
+                .clientHeight;
+            let clientWidth = window.innerWidth || document.documentElement.clientWidth || document.body
+                .clientWidth;
+            //  console.log(clientHeight, clientWidth);
+            //根据ratio动态设置video大小,保证相同比例即可，当前视频流比例有 1:2 / 9:16
+            //根据ratio动态设置分辨率发送数值
+            if (ratio == 2) {
+                resolution.b = 0
+                resolution.g = 3
+                resolution.c = 6
+            } else {
+                resolution.b = 1
+                resolution.g = 2
+                resolution.c = 5
+            }
+            if (clientWidth * ratio <= clientHeight) {
+                phonevideo.style.width = clientWidth + "px";
+                phonevideo.style.height = clientWidth * ratio + "px";
+            } else {
+                phonevideo.style.height = clientHeight + "px";
+                phonevideo.style.width = clientHeight / ratio + "px";
+            }
+        }
+    }
+
+    function showbtngroup () {
+        showbtn = !showbtn
+        if (showbtn == true) {
+            setgroupbtn.style.display = "block"
+        } else {
+            setgroupbtn.style.display = "none"
+        }
+    }
+
+    function enterplay () {
+        phonevideo.play()
+        enter.style.display = "none"
+    }
+    //退出
+    function hangup () {
+        Controller.closeConnection()
+    }
+    //重新连接
+    function reconnect () {
+        Controller.reStart()
+    }
+    //返回云手机桌面
+    function backhome () {
+        Controller.backHome()
+    }
+    //清理云手机后台应用
+    function cleanup () {
+        Controller.clearUp()
+    }
+    //切换分辨率
+    function changeresolution (value) {
+        Controller.changeResolution(value)
+    }
+    //显示延时
+    function currentround () {
+        Controller.getNetDelay((roundtime) => {
+            ys.innerHTML = `${roundtime}MS`
+        })
+    }
+    //一键启动游戏
+    function startgame () {
+        let message = {
+            gamename: "com.tencent.tmgp.sgame/com.tencent.tmgp.sgame.SGameActivity", //启动游戏的名字可动态传递 此处仅是例子
+            jobid: "123", //jobid  区分游戏标识，不唯一即可
+        };
+        Controller.startGame(message);
+    }
+    //获取最后一次操作时间戳
+    function getLastTimeStamp () {
+        return Controller.getLastTimeStamp()
+    }
+    //五分钟不操作将断开连接
+    function closeTimer () {
+        if (timer !== null) {
+            clearInterval(timer);
+        }
+        timer = setInterval(() => {
+            let timestamp = getLastTimeStamp();
+            var nowTime = Date.now();
+            if (nowTime - timestamp > 300000) {
+                clearInterval(timer);
+                alert("如果五分钟没有操作将断开连接");
+                hangup()
+            }
+        }, 6000);
+    }
+</script>
+
+</html>

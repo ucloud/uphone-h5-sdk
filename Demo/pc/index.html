@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+
+<head>
+    <link rel="stylesheet" href="./index.css" />
+</head>
+
+<body>
+    <div id="viewbox" ref="viewbox" class="viewbox">
+        <video id="remote-video" ref="revideo" class="remote-video" muted autoplay playsinline></video>
+    </div>
+    <div class="btnwrap">
+        <button id="hpbtn">退出</button>
+        <button id="rsbtn">重新连接</button>
+        <button id="rotabtn">旋转</button>
+        <button id="homebtn">桌面</button>
+        <button id="speedbtn">加速</button>
+        <button id="bqbtn">标清</button>
+        <button id="gqbtn">高清</button>
+        <button id="cqbtn">超清</button>
+        <button id="roundbtn">显示延迟</button>
+        <button id="stgamebtn">一键启动游戏</button>
+    </div>
+    <div id="ys" class="ys"></div>
+</body>
+<script src="./sdk/proto.js"></script>
+<script type="module">
+    //-----引入ucloudrtctools.js文件----
+    import controller from "./sdk/controller.js"
+    var resolution = {
+        b: "",
+        g: "",
+        c: ""
+    }
+    //-----连接ID-----
+    var loadingParams = {
+        Id: "", //云手机ID(必填项)
+        mediaConstraints: {
+            audio: true,
+            video: true,
+        },
+        gamename: "",//可选参数
+        jobid: "",//可选参数
+    };
+    var rotateflag = false
+    var timer = null
+    var viewbox = document.querySelector("#viewbox")
+    var remotevideo = document.querySelector("#remote-video")
+    var hpbtn = document.querySelector("#hpbtn")
+    var rsbtn = document.querySelector("#rsbtn")
+    var rotabtn = document.querySelector("#rotabtn")
+    var homebtn = document.querySelector("#homebtn")
+    var speedbtn = document.querySelector("#speedbtn")
+    var bqbtn = document.querySelector("#bqbtn")
+    var gqbtn = document.querySelector("#gqbtn")
+    var cqbtn = document.querySelector("#cqbtn")
+    var roundbtn = document.querySelector("#roundbtn")
+    var stgamebtn = document.querySelector("#stgamebtn")
+    var ys = document.querySelector("#ys")
+    hpbtn.addEventListener("click", hangup)
+    rsbtn.addEventListener("click", reconnect)
+    rotabtn.addEventListener("click", rotate)
+    homebtn.addEventListener("click", backhome)
+    speedbtn.addEventListener("click", clearup)
+    bqbtn.addEventListener("click", () => { changeresolution(resolution.b) })
+    gqbtn.addEventListener("click", () => { changeresolution(resolution.g) })
+    cqbtn.addEventListener("click", () => { changeresolution(resolution.c) })
+    roundbtn.addEventListener("click", currentround)
+    stgamebtn.addEventListener("click", startgame)
+    //---------获取远程媒体流的三个步骤-------
+    //----第一步初始化SDK----
+    var Controller = new controller(loadingParams)
+    //----第二步开始连接----
+    Controller.startConnection()
+    //----第三步监听连接状态，获取媒体流----
+    Controller.onstatus("devicestatus", (states) => { //设备连接状态回调
+        if (states == 1001) {
+            console.log("连接设备失败");
+        }
+        if (states == 1003) {
+            console.log("创建设备控制失败");
+        }
+        if (states == 1008) {
+            console.log("服务器应答失败");
+        }
+        if (states == 1026) {
+            console.log("设备已被占用");
+        }
+        if (states == 1038) {
+            console.log("后台资源未释放")
+        }
+        if (states == 73002) {
+            console.log("设备不存在");
+        }
+    })
+    Controller.onstatus("networkstatus", (states) => { //网络连接状态回调
+        if (states == "connected") {
+            console.log("网络连接成功");
+            //网络连接正常时，才可获取远程媒体流
+            getRemoteStream()
+            //五分钟不操作将断开连接
+            closeTimer()
+        }
+        if (states == "disconnected") { }
+    })
+    Controller.onstatus("gamestatus", (states) => { //一键启动游戏状态回调
+        if (states == "success") {
+            console.log("启动成功");
+        }
+        if (states == "fail") {
+            console.log("启动失败");
+        }
+    })
+    Controller.onstatus("resolution", (states) => { //切换分辨率状态回调
+        if (states == "success") {
+            console.log("切换成功");
+        } else {
+            console.log("切换失败");
+        }
+    })
+    function getRemoteStream () {
+        remotevideo.srcObject = Controller.getRemoteStream()
+        remotevideo.onloadedmetadata = function onloadedmetadata () {
+            var ratio = this.videoHeight / this.videoWidth
+            //根据ratio动态设置viewbox大小,保证相同比例即可，当前视频流比例有 1:2 / 9:16
+            //根据ratio动态设置分辨率发送数值
+            if (ratio == 2) {
+                resolution.b = 0
+                resolution.g = 3
+                resolution.c = 6
+                viewbox.style.width = 350 + "px"
+                viewbox.style.height = 700 + "px"
+            } else {
+                resolution.b = 1
+                resolution.g = 2
+                resolution.c = 5
+                viewbox.style.width = 540 + "px"
+                viewbox.style.height = 960 + "px"
+            }
+        }
+    }
+    //---------交互API-------------
+    //退出
+    function hangup () {
+        Controller.closeConnection()
+    }
+    //重新连接
+    function reconnect () {
+        Controller.reStart()
+    }
+    //旋转 
+    function rotate () {
+        if (!rotateflag) {
+            rotateflag = !rotateflag
+            viewbox.style.transform = `translate3d(0px, -0px, 0px) rotate(-90deg)`;
+            return;
+        } else {
+            rotateflag = !rotateflag
+            viewbox.style.transform = `translate3d(-0px, 0px, 0px) rotate(0deg)`;
+            return;
+        }
+    }
+    //返回云手机桌面
+    function backhome () {
+        Controller.backHome()
+    }
+    //云手机任务
+    function clearup () {
+        Controller.clearUp()
+    }
+    //切换分辨率
+    function changeresolution (value) {
+        Controller.changeResolution(value)
+    }
+    //显示延时
+    function currentround () {
+        Controller.getNetDelay((roundtime) => {
+            ys.innerHTML = `${roundtime}MS`
+        })
+    }
+    //一键启动游戏
+    function startgame () {
+        let message = {
+            gamename: "com.tencent.tmgp.sgame", //启动游戏的名字，可动态传递 此处仅是例子
+            jobid: "0", //jobid  区分游戏标识，不唯一即可
+        };
+        Controller.startGame(message);
+    }
+    //获取最后一次操作时间戳
+    function getLastTimeStamp () {
+        return Controller.getLastTimeStamp()
+    }
+    //五分钟不操作将断开连接
+    function closeTimer () {
+        if (timer !== null) {
+            clearInterval(timer);
+        }
+        timer = setInterval(() => {
+            let timestamp = getLastTimeStamp();
+            var nowTime = Date.now();
+            if (nowTime - timestamp > 300000) {
+                clearInterval(timer);
+                alert("如果五分钟没有操作将断开连接");
+                hangup()
+            }
+        }, 6000);
+    }
+</script>

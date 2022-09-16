@@ -1,0 +1,68 @@
+syntax = "proto3";
+import "google/protobuf/any.proto";
+package ucloud;
+ 
+//-----------------The secondary message-----------------
+//finger info
+message finger{
+int32 fid = 1;
+float x = 2;
+float y = 3;
+}
+//resolution msg
+message resolution {
+int32 r = 1;//enum value:: 2 : 1 (0/3/6); 16 : 9 (1/2/5);
+int32 w = 2;//width
+int32 h = 3;//height
+int32 status = 4;// response status,if this msg is request, ignore it
+}
+//version msg
+message version {
+string value = 1;
+}
+//error report msg
+message errmsg {
+int32 error = 1;
+string desc = 2;
+}
+//Windows gamepad msg
+message gamepad {
+int32 buttons = 1;
+sint32 lx = 2;
+sint32 ly = 3;
+sint32 rx = 4;
+sint32 ry = 5;
+}
+//rtmp msg
+message rtmp {
+string uri = 1;
+}
+//Define mouse pointer msg
+message mouse{
+    float x = 1;
+    float y = 2;
+}
+//keyboard msg
+message kb {
+    uint32 v = 1;// key's value
+}
+//rtcsvr response msg
+message response {
+    uint32 v = 1;// key's value
+}
+//soft encode control msg
+message secm {
+    uint32 v = 1;// refresh interval(second)
+}
+//-----------------secondary message define end-----------------
+ 
+ 
+//Request message,the primary msg.
+//All secondary messages need to be filled in here
+message raw_msg {
+    int32 code = 1;
+    google.protobuf.Any msg = 2;//Other msg besides the motion fingers info and mouse
+    repeated finger motion_fs = 3;//Motion fingers msg.Defined here to save bytes
+    mouse mouse_ptr = 5;//Mouse pointer msg.Defined here to save bytes
+    uint64 timestamp = 4;//It has to linearly increasing
+}
